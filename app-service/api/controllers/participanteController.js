@@ -89,9 +89,3 @@ export const misParticipaciones = async (req, res) => {
   }
 };
 
-// ADMIN ENDPOINTS (protegidos)
-import { getComprobantesPendientes, aprobarComprobante, rechazarComprobante } from '../controllers/adminController.js';
-
-router.get('/admin/comprobantes', verifyToken, getComprobantesPendientes);
-router.post('/admin/comprobantes/aprobar/:id', verifyToken, aprobarComprobante);
-router.post('/admin/comprobantes/rechazar/:id', verifyToken, rechazarComprobante);
