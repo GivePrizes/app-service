@@ -1,6 +1,6 @@
 // api/routes/sorteoRoutes.js
 import { Router } from 'express';
-import { verifyToken } from '../middleware/jwtValidate.js';
+import { verifyToken, requireAdmin } from '../middleware/jwtValidate.js';
 import {
   getSorteos,
   getSorteoById,
@@ -10,14 +10,13 @@ import {
 
 const router = Router();
 
-// Públicas
+// Públicas (cualquiera puede ver sorteos)
 router.get('/', getSorteos);
 router.get('/:id', getSorteoById);
 
-// Solo admin (protegidas)
-router.use(verifyToken);
+// A partir de aquí, sólo admins
+router.use(verifyToken, requireAdmin);
 
-// Aquí puedes añadir un middleware extra para verificar rol 'admin' después
 router.post('/crear', crearSorteo);
 router.post('/:id/realizar', realizarSorteo);
 

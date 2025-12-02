@@ -1,5 +1,6 @@
+// api/routes/adminRoutes.js
 import { Router } from 'express';
-import { verifyToken } from '../middleware/jwtValidate.js';
+import { verifyToken, requireAdmin } from '../middleware/jwtValidate.js';
 import { 
   getComprobantesPendientes, 
   aprobarComprobante, 
@@ -8,8 +9,10 @@ import {
 
 const router = Router();
 
-// Solo admins (puedes añadir un check de rol después)
-router.use(verifyToken);
+// Todas las rutas de /api/admin requieren:
+// 1) estar autenticado
+// 2) ser admin
+router.use(verifyToken, requireAdmin);
 
 router.get('/comprobantes', getComprobantesPendientes);
 router.post('/comprobantes/aprobar/:id', aprobarComprobante);
