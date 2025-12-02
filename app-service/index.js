@@ -26,6 +26,4 @@ app.get('/', (req, res) => {
 });
 
 // ✅ Exportar como función serverless
-export default function handler(req, res) {
-  app(req, res);
-}
+export default app;
