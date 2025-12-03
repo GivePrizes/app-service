@@ -5,19 +5,21 @@ import {
   getSorteos,
   getSorteoById,
   crearSorteo,
-  realizarSorteo
+  realizarSorteo,
+  getRuletaData
 } from '../controllers/sorteoController.js';
 
 const router = Router();
 
-// Públicas (cualquiera puede ver sorteos)
+// Públicas
 router.get('/', getSorteos);
 router.get('/:id', getSorteoById);
 
-// A partir de aquí, sólo admins
+// Solo admin (protegidas)
 router.use(verifyToken, requireAdmin);
 
 router.post('/crear', crearSorteo);
+router.get('/:id/ruleta', getRuletaData);
 router.post('/:id/realizar', realizarSorteo);
 
 export default router;

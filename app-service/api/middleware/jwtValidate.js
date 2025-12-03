@@ -8,10 +8,9 @@ export const verifyToken = (req, res, next) => {
   }
 
   const token = authHeader.split(' ')[1];
-
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    // payload debería venir de auth-service con { id, email, rol }
+    // payload viene del auth-service: { id, email, rol }
     req.user = payload;
     next();
   } catch (err) {
@@ -20,13 +19,12 @@ export const verifyToken = (req, res, next) => {
 };
 
 export const requireAdmin = (req, res, next) => {
-  // verifyToken debe haber corrido antes
   if (!req.user) {
     return res.status(401).json({ error: 'No autenticado' });
   }
 
   if (req.user.rol !== 'admin') {
-    return res.status(403).json({ error: 'Acceso sólo para administradores' });
+    return res.status(403).json({ error: 'Acceso solo para administradores' });
   }
 
   next();
