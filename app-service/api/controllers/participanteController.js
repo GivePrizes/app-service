@@ -9,6 +9,8 @@ const supabase = createClient(
 export const guardarNumeros = async (req, res) => {
   const { sorteo_id, numeros, comprobante } = req.body;
   const usuario_id = req.user.id;
+  const numerosArray = typeof numeros === 'string' ? JSON.parse(numeros) : numeros;
+  const file = req.file;
 
   if (!Array.isArray(numeros) || numeros.length < 1 || numeros.length > 5)
     return res.status(400).json({ error: 'Debes elegir entre 1 y 5 números' });
@@ -88,4 +90,6 @@ export const misParticipaciones = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+
 
