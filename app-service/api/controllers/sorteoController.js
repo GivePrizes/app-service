@@ -1,5 +1,11 @@
 // api/controllers/sorteoController.js
 import pool from '../utils/db.js';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
 
 export const getSorteos = async (req, res) => {
   try {
@@ -45,26 +51,57 @@ export const getSorteoById = async (req, res) => {
   }
 };
 
+
+// Crear nuevo sorteo (admin)
 export const crearSorteo = async (req, res) => {
   const { descripcion, premio, cantidad_numeros, precio_numero, fecha_sorteo } =
     req.body;
 
+  let imagen_url = null;
+
   try {
+    // 1. Si viene una imagen, subirla a Supabase
+    if (req.file) {
+      const ext = req.file.originalname.split('.').pop();
+      const fileName = `sorteos/${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from('sorteos')              // 👈 bucket "sorteos" en Supabase
+        .upload(fileName, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: false,
+        });
+
+      if (error) {
+        console.error(error);
+        return res
+          .status(500)
+          .json({ error: 'Error al subir la imagen del sorteo' });
+      }
+
+      const { data } = supabase.storage.from('sorteos').getPublicUrl(fileName);
+      imagen_url = data.publicUrl;   // 👈 URL pública que guardamos en BD
+    }
+
+    // 2. Guardar sorteo (con imagen_url si existe)
     const result = await pool.query(
       `
       INSERT INTO sorteo
-      (descripcion, premio, cantidad_numeros, precio_numero, fecha_sorteo)
-      VALUES ($1, $2, $3, $4, $5)
+      (descripcion, premio, cantidad_numeros, precio_numero, fecha_sorteo, imagen_url)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
       `,
-      [descripcion, premio, cantidad_numeros, precio_numero, fecha_sorteo]
+      [descripcion, premio, cantidad_numeros, precio_numero, fecha_sorteo, imagen_url]
     );
 
     res.json({ success: true, sorteo: result.rows[0] });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 };
+
+
 
 // ✅ Datos para alimentar la ruleta (solo números aprobados)
 export const getRuletaData = async (req, res) => {

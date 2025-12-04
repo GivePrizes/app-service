@@ -16,12 +16,14 @@ const router = Router();
 router.get('/', getSorteos);
 router.get('/:id', getSorteoById);
 
-// Solo admin (protegidas)
+// Solo admin
 router.use(verifyToken, requireAdmin);
 
-router.post('/crear', crearSorteo);
+// 👇 AQUÍ: un solo POST, con upload.single('imagen')
+router.post('/crear', upload.single('imagen'), crearSorteo);
+
 router.get('/:id/ruleta', getRuletaData);
 router.post('/:id/realizar', realizarSorteo);
-router.post('/crear', verifyToken, upload.single('imagen'), crearSorteo);
 
 export default router;
+
