@@ -8,6 +8,7 @@ import {
   realizarSorteo,
   getRuletaData
 } from '../controllers/sorteoController.js';
+import { upload } from '../../index.js';
 
 const router = Router();
 
@@ -21,5 +22,6 @@ router.use(verifyToken, requireAdmin);
 router.post('/crear', crearSorteo);
 router.get('/:id/ruleta', getRuletaData);
 router.post('/:id/realizar', realizarSorteo);
+router.post('/crear', verifyToken, upload.single('imagen'), crearSorteo);
 
 export default router;
