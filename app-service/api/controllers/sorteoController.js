@@ -52,38 +52,63 @@ export const getSorteoById = async (req, res) => {
 };
 
 
-// Crear nuevo sorteo (admin)
+// api/controllers/sorteoController.js
 export const crearSorteo = async (req, res) => {
-  const { descripcion, premio, cantidad_numeros, precio_numero, fecha_sorteo } =
-    req.body;
+  console.log("🟦 /api/sorteos/crear llamado");
+
+  // Logs iniciales
+  console.log("👉 BODY recibido:", req.body);
+  console.log("👉 FILE recibido (req.file):", req.file);
+
+  const { descripcion, premio, cantidad_numeros, precio_numero, fecha_sorteo } = req.body;
+  const file = req.file;
 
   let imagen_url = null;
 
   try {
-    // 1. Si viene una imagen, subirla a Supabase
-    if (req.file) {
-      const ext = req.file.originalname.split('.').pop();
-      const fileName = `sorteos/${Date.now()}-${Math.round(Math.random() * 1e9)}.${ext}`;
+    // 1️⃣ Validación ligera del body
+    if (!descripcion || !premio || !cantidad_numeros || !precio_numero || !fecha_sorteo) {
+      console.error("❌ Error: faltan campos obligatorios.");
+      return res.status(400).json({ error: "Faltan campos obligatorios." });
+    }
 
-      const { error } = await supabase.storage
-        .from('sorteos')              // 👈 bucket "sorteos" en Supabase
-        .upload(fileName, req.file.buffer, {
-          contentType: req.file.mimetype,
+    // 2️⃣ Si vino imagen, subir a Supabase
+    if (file) {
+      console.log("📤 Subiendo imagen a Supabase...");
+
+      const ext = file.mimetype?.split("/")[1] || "jpg";
+      const fileName = `sorteos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+      console.log("📁 Nombre final del archivo:", fileName);
+
+      const { data, error } = await supabase.storage
+        .from("imagenes-sorteos") // bucket
+        .upload(fileName, file.buffer, {
+          contentType: file.mimetype,
           upsert: false,
         });
 
       if (error) {
-        console.error(error);
-        return res
-          .status(500)
-          .json({ error: 'Error al subir la imagen del sorteo' });
+        console.error("❌ Error en supabase.storage.upload:", error);
+        throw error;
       }
 
-      const { data } = supabase.storage.from('sorteos').getPublicUrl(fileName);
-      imagen_url = data.publicUrl;   // 👈 URL pública que guardamos en BD
+      console.log("✅ Imagen subida correctamente:", data);
+
+      // Obtener URL pública
+      const { data: publicData } = supabase.storage
+        .from("imagenes-sorteos")
+        .getPublicUrl(fileName);
+
+      imagen_url = publicData.publicUrl;
+      console.log("🌐 URL pública generada:", imagen_url);
+    } else {
+      console.log("⚠️ No se envió imagen, imagen_url = null");
     }
 
-    // 2. Guardar sorteo (con imagen_url si existe)
+    // 3️⃣ Insertar sorteo en BD
+    console.log("📝 Insertando sorteo en la base de datos...");
+
     const result = await pool.query(
       `
       INSERT INTO sorteo
@@ -91,15 +116,32 @@ export const crearSorteo = async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
       `,
-      [descripcion, premio, cantidad_numeros, precio_numero, fecha_sorteo, imagen_url]
+      [
+        descripcion,
+        premio,
+        Number(cantidad_numeros),
+        Number(precio_numero),
+        fecha_sorteo,
+        imagen_url,
+      ]
     );
 
-    res.json({ success: true, sorteo: result.rows[0] });
+    console.log("✅ Sorteo insertado correctamente:", result.rows[0]);
+
+    return res.json({
+      success: true,
+      sorteo: result.rows[0],
+    });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    console.error("🔥 ERROR en crearSorteo:", err);
+
+    return res.status(500).json({
+      error: err.message || "Error desconocido creando sorteo",
+    });
   }
 };
+
 
 
 
