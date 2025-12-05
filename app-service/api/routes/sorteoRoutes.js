@@ -1,29 +1,29 @@
 // api/routes/sorteoRoutes.js
 import { Router } from 'express';
-import { verifyToken, requireAdmin } from '../middleware/jwtValidate.js';
 import {
   getSorteos,
   getSorteoById,
   crearSorteo,
+  getRuletaData,
   realizarSorteo,
-  getRuletaData
 } from '../controllers/sorteoController.js';
-import { upload } from '../../index.js';
+import { verifyToken, requireAdmin } from '../middleware/jwtValidate.js';
+import { upload } from '../middleware/upload.js';
 
 const router = Router();
 
-// Públicas
 router.get('/', getSorteos);
 router.get('/:id', getSorteoById);
 
-// Solo admin
-router.use(verifyToken, requireAdmin);
+router.post(
+  '/crear',
+  verifyToken,
+  requireAdmin,
+  upload.single('imagen'),  // aquí SÍ usamos multer
+  crearSorteo
+);
 
-// 👇 AQUÍ: un solo POST, con upload.single('imagen')
-router.post('/crear', upload.single('imagen'), crearSorteo);
-
-router.get('/:id/ruleta', getRuletaData);
-router.post('/:id/realizar', realizarSorteo);
+router.get('/:id/ruleta', verifyToken, requireAdmin, getRuletaData);
+router.post('/:id/realizar', verifyToken, requireAdmin, realizarSorteo);
 
 export default router;
-
