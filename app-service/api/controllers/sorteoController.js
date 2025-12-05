@@ -52,6 +52,10 @@ export const getSorteoById = async (req, res) => {
 };
 
 
+/*
+*y todo el flujo de subir a Supabase y hacer el INSERT).
+*/
+
 // api/controllers/sorteoController.js
 export const crearSorteo = async (req, res) => {
   console.log("🟦 /api/sorteos/crear llamado");
