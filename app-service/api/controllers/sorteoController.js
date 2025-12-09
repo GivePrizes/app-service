@@ -321,10 +321,12 @@ export const eliminarSorteo = async (req, res) => {
 
 
 // api/controllers/sorteoController.js
-  //  Actualizar sorteo existente
-  //  (sin manejo de imagen en esta función)
-  //  (la imagen se maneja solo en crearSorteo con upload a Supabase)
-  //  (aquí solo se actualizan los campos de texto/números/fecha)
+//  Actualizar sorteo existente 
+//  (sin manejo de imagen en esta función)
+//  (la imagen se maneja solo en crearSorteo con upload a Supabase)
+  // //  (aquí solo se actualizan los campos de texto/números/fecha)
+// api/controllers/sorteoController.js
+
 export const actualizarSorteo = async (req, res) => {
   const { id } = req.params;
   const {
@@ -333,11 +335,51 @@ export const actualizarSorteo = async (req, res) => {
     precio_numero,
     cantidad_numeros,
     estado,
-    imagen_url,
     fecha_sorteo,
   } = req.body;
 
+  const file = req.file; // 👈 posible nueva imagen
+  let imagen_url = null;
+
   try {
+    // 1️⃣ Traer la imagen actual para no perderla si no mandan archivo
+    const currentRes = await pool.query(
+      'SELECT imagen_url FROM sorteo WHERE id = $1',
+      [id]
+    );
+    if (currentRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Sorteo no encontrado' });
+    }
+
+    imagen_url = currentRes.rows[0].imagen_url;
+
+    // 2️⃣ Si hay nueva imagen, subir a Supabase y reemplazar imagen_url
+    if (file) {
+      const ext = file.mimetype?.split('/')[1] || 'jpg';
+      const fileName = `sorteos/${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}.${ext}`;
+
+      const { data, error } = await supabase.storage
+        .from('imagenes-sorteos')
+        .upload(fileName, file.buffer, {
+          contentType: file.mimetype,
+          upsert: false,
+        });
+
+      if (error) {
+        console.error('❌ Error en supabase.storage.upload (editar):', error);
+        throw error;
+      }
+
+      const { data: publicData } = supabase.storage
+        .from('imagenes-sorteos')
+        .getPublicUrl(fileName);
+
+      imagen_url = publicData.publicUrl;
+    }
+
+    // 3️⃣ Actualizar sorteo
     const { rowCount } = await pool.query(
       `
       UPDATE sorteo
@@ -374,3 +416,4 @@ export const actualizarSorteo = async (req, res) => {
       .json({ error: 'Error al actualizar el sorteo' });
   }
 };
+

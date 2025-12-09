@@ -31,7 +31,7 @@ router.get('/:id/ruleta', verifyToken, requireAdmin, getRuletaData);
 router.post('/:id/realizar', verifyToken, requireAdmin, realizarSorteo);
 
 // editar / eliminar (admin)
-router.put('/:id', verifyToken, requireAdmin, actualizarSorteo);
+router.put('/:id', verifyToken, requireAdmin, upload.single('imagen') ,actualizarSorteo);
 router.delete('/:id', verifyToken, requireAdmin, eliminarSorteo);
 
 export default router;
