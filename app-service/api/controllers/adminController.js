@@ -11,6 +11,7 @@ export const getComprobantesPendientes = async (req, res) => {
              u.nombre AS usuario,
              u.telefono AS telefono,
              s.descripcion AS sorteo
+             s.id AS sorteo_id
       FROM numero_participacion np
       JOIN usuarios u ON np.usuario_id = u.id
       JOIN sorteo s ON np.sorteo_id = s.id
