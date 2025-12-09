@@ -8,21 +8,23 @@ export const getComprobantesPendientes = async (req, res) => {
              np.numero,
              np.comprobante_url,
              np.fecha,
-             u.nombre AS usuario,
+             u.nombre   AS usuario,
              u.telefono AS telefono,
-             s.descripcion AS sorteo
-             s.id AS sorteo_id
+             s.descripcion AS sorteo,
+             s.id       AS sorteo_id       -- 👈 coma antes de esta línea
       FROM numero_participacion np
       JOIN usuarios u ON np.usuario_id = u.id
-      JOIN sorteo s ON np.sorteo_id = s.id
+      JOIN sorteo   s ON np.sorteo_id = s.id
       WHERE np.estado = 'pendiente'
       ORDER BY np.fecha DESC
     `);
     res.json(result.rows);
   } catch (err) {
+    console.error('Error en getComprobantesPendientes:', err); // 👈 ayuda para futuros errores
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // ✅ Aprobar comprobante, y si se llena el sorteo -> marcar sorteo.estado = 'lleno'
 export const aprobarComprobante = async (req, res) => {
