@@ -7,6 +7,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+
+//  Obtener lista de sorteos activos o llenos, con conteo de números ocupados
+//  (para mostrar al usuario)
+
 export const getSorteos = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -191,6 +195,7 @@ export const getRuletaData = async (req, res) => {
         .json({ error: 'No hay participantes aprobados para este sorteo' });
     }
 
+    
     const participantes = participantesRes.rows.map(row => {
       const nombre = row.nombre?.trim() || '';
       const partes = nombre.split(' ').filter(Boolean);
