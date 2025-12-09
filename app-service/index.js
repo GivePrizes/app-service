@@ -24,7 +24,9 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json());
+// ⬇⬇ Aumentamos el límite del body JSON y urlencoded
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Rutas principales
 app.use('/api/participante', participanteRoutes);
@@ -37,8 +39,5 @@ app.get('/', (req, res) => {
 });
 
 export const upload = multer({ storage });
-
-
-
 
 export default app;
