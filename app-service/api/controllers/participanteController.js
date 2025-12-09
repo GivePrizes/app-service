@@ -1,3 +1,4 @@
+// api/controllers/participanteController.js
 import pool from '../utils/db.js';
 import { createClient } from '@supabase/supabase-js';
 
@@ -46,7 +47,7 @@ export const guardarNumeros = async (req, res) => {
 
       const fileName = `comprobantes/${usuario_id}-${sorteo_id}-${Date.now()}.${fileExt}`;
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('comprobantes')
         .upload(fileName, Buffer.from(base64Data, 'base64'), {
           contentType,
@@ -68,47 +69,75 @@ export const guardarNumeros = async (req, res) => {
     // 3. Guardar números (transacción)
     await pool.query('BEGIN');
 
-    // Verificar que cada número sea válido y no esté ocupado
     for (const num of numerosArray) {
+      // Rango válido
       if (num < 1 || num > sorteo.cantidad_numeros) {
-        throw new Error(`Número ${num} fuera de rango`);
+        throw new Error(`El número ${num} está fuera del rango permitido.`);
       }
 
-      const existe = await pool.query(
-        `SELECT 1
-         FROM numero_participacion
-         WHERE sorteo_id = $1 AND numero = $2 AND estado = $3`,
-        [sorteo_id, num, 'aprobado']
-      );
-
-      if (existe.rows.length > 0) {
-        throw new Error(`El número ${num} ya está ocupado`);
-      }
-    }
-
-    // Insertar todos como 'pendiente'
-    for (const num of numerosArray) {
-      await pool.query(
+      // Bloqueamos la fila (si existe) para evitar condiciones de carrera
+      const existingRes = await pool.query(
         `
-        INSERT INTO numero_participacion
-        (usuario_id, sorteo_id, numero, estado, comprobante_url)
-        VALUES ($1, $2, $3, 'pendiente', $4)
+        SELECT id, estado, usuario_id
+        FROM numero_participacion
+        WHERE sorteo_id = $1 AND numero = $2
+        FOR UPDATE
         `,
-        [usuario_id, sorteo_id, num, comprobante_url]
+        [sorteo_id, num]
       );
+
+      if (existingRes.rows.length === 0) {
+        // No existe ninguna fila -> insertar nueva
+        await pool.query(
+          `
+          INSERT INTO numero_participacion
+          (usuario_id, sorteo_id, numero, estado, comprobante_url)
+          VALUES ($1, $2, $3, 'pendiente', $4)
+          `,
+          [usuario_id, sorteo_id, num, comprobante_url]
+        );
+      } else {
+        const row = existingRes.rows[0];
+
+        // Si está aprobado o pendiente, está apartando alguien (tú o otro)
+        if (row.estado === 'aprobado' || row.estado === 'pendiente') {
+          // Si quieres diferenciar entre él mismo u otro se podría revisar row.usuario_id
+          throw new Error(
+            `El número ${num} ya fue apartado por otro participante. Elige otro número.`
+          );
+        }
+
+        // Si está rechazado, "liberamos" reutilizando la misma fila
+        if (row.estado === 'rechazado') {
+          await pool.query(
+            `
+            UPDATE numero_participacion
+            SET usuario_id = $1,
+                estado = 'pendiente',
+                comprobante_url = $2,
+                fecha = NOW()
+            WHERE id = $3
+            `,
+            [usuario_id, comprobante_url, row.id]
+          );
+        } else {
+          // Por si en el futuro aparecen otros estados raros
+          throw new Error(`El número ${num} ya está ocupado.`);
+        }
+      }
     }
 
     await pool.query('COMMIT');
     return res.json({
       success: true,
-      message: '¡Participación enviada! Esperando aprobación...',
+      message: '¡Participación enviada! Tus números quedaron en pendiente de aprobación.',
     });
   } catch (err) {
     console.error('Error en guardarNumeros:', err);
     await pool.query('ROLLBACK').catch(() => {});
-
-    // Si viene del motor de Postgres (por ejemplo RLS en otra tabla) lo devolvemos igual
-    return res.status(400).json({ error: err.message || 'Error al guardar la participación' });
+    return res.status(400).json({
+      error: err.message || 'Error al guardar la participación',
+    });
   }
 };
 
