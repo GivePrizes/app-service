@@ -1,9 +1,10 @@
 import pool from '../utils/db.js';
 import { createClient } from '@supabase/supabase-js';
 
+// ⚠️ En backend usa SIEMPRE la service role, NO la anon key
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export const guardarNumeros = async (req, res) => {
@@ -39,8 +40,10 @@ export const guardarNumeros = async (req, res) => {
     let comprobante_url = null;
     if (comprobante) {
       const base64Data = comprobante.replace(/^data:.+;base64,/, '');
-      const fileExt = comprobante.split(';')[0].split('/')[1];
-      const contentType = comprobante.split(';')[0].split(':')[1];
+      const headerPart = comprobante.split(';')[0];    // "data:image/png"
+      const contentType = headerPart.split(':')[1] || 'image/png'; // "image/png"
+      const fileExt = headerPart.split('/')[1] || 'png';           // "png"
+
       const fileName = `comprobantes/${usuario_id}-${sorteo_id}-${Date.now()}.${fileExt}`;
 
       const { data, error } = await supabase.storage
@@ -50,7 +53,10 @@ export const guardarNumeros = async (req, res) => {
           upsert: false,
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error subiendo comprobante a Supabase:', error);
+        throw new Error('No se pudo guardar el comprobante, intenta de nuevo.');
+      }
 
       const { data: publicData } = supabase.storage
         .from('comprobantes')
@@ -98,11 +104,13 @@ export const guardarNumeros = async (req, res) => {
       message: '¡Participación enviada! Esperando aprobación...',
     });
   } catch (err) {
-    await pool.query('ROLLBACK');
-    return res.status(400).json({ error: err.message });
+    console.error('Error en guardarNumeros:', err);
+    await pool.query('ROLLBACK').catch(() => {});
+
+    // Si viene del motor de Postgres (por ejemplo RLS en otra tabla) lo devolvemos igual
+    return res.status(400).json({ error: err.message || 'Error al guardar la participación' });
   }
 };
-
 
 export const misParticipaciones = async (req, res) => {
   const usuario_id = req.user.id;
@@ -119,10 +127,7 @@ export const misParticipaciones = async (req, res) => {
     );
     res.json(result.rows);
   } catch (err) {
+    console.error('Error en misParticipaciones:', err);
     res.status(500).json({ error: err.message });
   }
 };
-
-
-
-
