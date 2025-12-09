@@ -300,3 +300,72 @@ export const realizarSorteo = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+
+
+export const eliminarSorteo = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM sorteo WHERE id = $1', [id]);
+    return res.json({ message: 'Sorteo eliminado correctamente' });
+  } catch (err) {
+    console.error('Error eliminando sorteo:', err);
+    return res.status(500).json({ error: 'Error al eliminar el sorteo' });
+  }
+};
+
+
+// api/controllers/sorteoController.js
+  //  Actualizar sorteo existente
+  //  (sin manejo de imagen en esta función)
+  //  (la imagen se maneja solo en crearSorteo con upload a Supabase)
+  //  (aquí solo se actualizan los campos de texto/números/fecha)
+export const actualizarSorteo = async (req, res) => {
+  const { id } = req.params;
+  const {
+    descripcion,
+    premio,
+    precio_numero,
+    cantidad_numeros,
+    estado,
+    imagen_url,
+    fecha_sorteo,
+  } = req.body;
+
+  try {
+    const { rowCount } = await pool.query(
+      `
+      UPDATE sorteo
+      SET descripcion      = $1,
+          premio           = $2,
+          precio_numero    = $3,
+          cantidad_numeros = $4,
+          estado           = $5,
+          imagen_url       = $6,
+          fecha_sorteo     = $7
+      WHERE id = $8
+      `,
+      [
+        descripcion,
+        premio,
+        Number(precio_numero),
+        Number(cantidad_numeros),
+        estado,
+        imagen_url,
+        fecha_sorteo,
+        id,
+      ]
+    );
+
+    if (rowCount === 0) {
+      return res.status(404).json({ error: 'Sorteo no encontrado' });
+    }
+
+    return res.json({ message: 'Sorteo actualizado correctamente' });
+  } catch (err) {
+    console.error('Error actualizando sorteo:', err);
+    return res
+      .status(500)
+      .json({ error: 'Error al actualizar el sorteo' });
+  }
+};
