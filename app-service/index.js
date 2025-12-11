@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import multer from 'multer';
 
+import ruletaRoutes from './api/routes/ruletaRoutes.js';
 import participanteRoutes from './api/routes/participanteRoutes.js';
 import sorteoRoutes from './api/routes/sorteoRoutes.js';
 import adminRoutes from './api/routes/adminRoutes.js';
@@ -38,6 +39,12 @@ app.get('/', (req, res) => {
   res.send('APP SERVICE OK 🚀');
 });
 
+// Rutas de ruleta
+app.use('/api/sorteos', ruletaRoutes);
+
+
 export const upload = multer({ storage });
 
 export default app;
+
+
