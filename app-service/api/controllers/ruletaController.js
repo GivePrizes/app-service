@@ -31,17 +31,6 @@ export const programarRuleta = async (req, res) => {
       return res.status(404).json({ error: 'Sorteo no encontrado' });
     }
 
-    // ✅ Opcional: Verificar si el usuario es el admin del sorteo
-    if (adminId) {
-      const adminRes = await pool.query(
-        'SELECT id FROM sorteo WHERE id = $1 AND admin_id = $2',
-        [sorteoId, adminId]
-      );
-      if (adminRes.rows.length === 0) {
-        return res.status(403).json({ error: 'No autorizado' });
-      }
-    }
-
     const sorteo = sorteoRes.rows[0];
     // Verificar estado
 
