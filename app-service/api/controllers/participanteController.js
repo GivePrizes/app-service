@@ -141,22 +141,33 @@ export const guardarNumeros = async (req, res) => {
   }
 };
 
+//  Mis participaciones (incluye estado del sorteo y ganador)
 export const misParticipaciones = async (req, res) => {
   const usuario_id = req.user.id;
+
   try {
-    const result = await pool.query(
-      `
-      SELECT np.*, s.descripcion, s.premio
+    const q = `
+      SELECT
+        np.id,
+        np.sorteo_id,
+        np.numero,
+        np.estado,
+        np.fecha,
+        s.descripcion,
+        s.premio,
+        s.estado AS sorteo_estado,
+        s.numero_ganador
       FROM numero_participacion np
-      JOIN sorteo s ON np.sorteo_id = s.id
+      JOIN sorteo s ON s.id = np.sorteo_id
       WHERE np.usuario_id = $1
-      ORDER BY np.fecha DESC
-      `,
-      [usuario_id]
-    );
-    res.json(result.rows);
+      ORDER BY np.sorteo_id DESC, np.numero ASC;
+    `;
+
+    const result = await pool.query(q, [usuario_id]);
+    return res.json(result.rows);
   } catch (err) {
     console.error('Error en misParticipaciones:', err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Error cargando participaciones' });
   }
 };
+

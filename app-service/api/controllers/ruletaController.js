@@ -31,13 +31,26 @@ export const programarRuleta = async (req, res) => {
       return res.status(404).json({ error: 'Sorteo no encontrado' });
     }
 
-    const sorteo = sorteoRes.rows[0];
+    // ✅ Opcional: Verificar si el usuario es el admin del sorteo
+    if (adminId) {
+      const adminRes = await pool.query(
+        'SELECT id FROM sorteo WHERE id = $1 AND admin_id = $2',
+        [sorteoId, adminId]
+      );
+      if (adminRes.rows.length === 0) {
+        return res.status(403).json({ error: 'No autorizado' });
+      }
+    }
 
-    if (sorteo.estado === 'finalizado') {
+    const sorteo = sorteoRes.rows[0];
+    // Verificar estado
+
+    if (sorteo.estado !== 'lleno') {
       return res.status(400).json({
-        error: 'No puedes programar la ruleta de un sorteo FINALIZADO.',
+        error: `Solo puedes programar la ruleta cuando el sorteo esté LLENO. Estado actual: "${sorteo.estado}".`,
       });
     }
+
 
     // 2) Calcular hora programada
     let ruletaHora;
@@ -57,32 +70,36 @@ export const programarRuleta = async (req, res) => {
       ruletaHora.setMinutes(ruletaHora.getMinutes() + min);
     }
 
-    // 3) Guardar en sorteo
+    // 3) Guardar en sorteo (ruleta + estado del sorteo)
     const updateQuery = `
       UPDATE sorteo
-      SET ruleta_estado = 'programada',
-          ruleta_hora_programada = $1
+      SET
+        ruleta_estado = 'programada',
+        ruleta_hora_programada = $1,
+        estado = 'lleno'
       WHERE id = $2
       RETURNING *;
     `;
 
+
+
     const { rows: updatedRows } = await pool.query(updateQuery, [
-      ruletaHora,
-      sorteoId,
-    ]);
+          ruletaHora,
+          sorteoId,
+        ]);
 
-    // (Opcional) Si luego quieres usar audit_log, aquí podríamos insertar un log.
+        // (Opcional) Si luego quieres usar audit_log, aquí podríamos insertar un log.
 
-    return res.json({
-      success: true,
-      message: 'Ruleta programada correctamente',
-      sorteo: updatedRows[0],
-    });
-  } catch (err) {
-    console.error('Error en programarRuleta:', err);
-    return res.status(500).json({ error: 'Error interno al programar la ruleta' });
-  }
-};
+        return res.json({
+          success: true,
+          message: 'Ruleta programada correctamente',
+          sorteo: updatedRows[0],
+        });
+      } catch (err) {
+        console.error('Error en programarRuleta:', err);
+        return res.status(500).json({ error: 'Error interno al programar la ruleta' });
+      }
+    };
 
 /**
  * 🧿 INFO PÚBLICA DE RULETA
@@ -376,7 +393,6 @@ export const realizarRuleta = async (req, res) => {
         numero_ganador      = $1,
         ruleta_estado       = 'finalizada',
         ruleta_realizada_at = NOW(),
-        estado              = 'finalizado',
         top_buyer_user_id   = $2
       WHERE id = $3
       RETURNING *;
