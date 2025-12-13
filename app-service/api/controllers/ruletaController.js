@@ -14,7 +14,6 @@ import pool from '../utils/db.js';
 export const programarRuleta = async (req, res) => {
   const sorteoId = parseInt(req.params.id, 10);
   const { tiempoMinutos, fechaPersonalizada } = req.body;
-  const adminId = req.user?.id || null; // viene del JWT
 
   if (Number.isNaN(sorteoId)) {
     return res.status(400).json({ error: 'ID de sorteo inválido' });
@@ -23,7 +22,7 @@ export const programarRuleta = async (req, res) => {
   try {
     // 1) Verificar sorteo
     const sorteoRes = await pool.query(
-      'SELECT id, estado FROM sorteo WHERE id = $1',
+      'SELECT id, estado, ruleta_estado FROM sorteo WHERE id = $1',
       [sorteoId]
     );
 
@@ -32,14 +31,13 @@ export const programarRuleta = async (req, res) => {
     }
 
     const sorteo = sorteoRes.rows[0];
-    // Verificar estado
 
+    // Solo se programa si está LLENO (tu enum real sí tiene "lleno")
     if (sorteo.estado !== 'lleno') {
       return res.status(400).json({
         error: `Solo puedes programar la ruleta cuando el sorteo esté LLENO. Estado actual: "${sorteo.estado}".`,
       });
     }
-
 
     // 2) Calcular hora programada
     let ruletaHora;
@@ -59,36 +57,33 @@ export const programarRuleta = async (req, res) => {
       ruletaHora.setMinutes(ruletaHora.getMinutes() + min);
     }
 
-    // 3) Guardar en sorteo (ruleta + estado del sorteo)
+    // 3) Guardar ruleta (NO toques estado del sorteo aquí: déjalo "lleno")
     const updateQuery = `
       UPDATE sorteo
       SET
         ruleta_estado = 'programada',
-        ruleta_hora_programada = $1,
-        estado = 'lleno'
+        ruleta_hora_programada = $1
       WHERE id = $2
-      RETURNING *;
+      RETURNING id, estado, ruleta_estado, ruleta_hora_programada;
     `;
 
+    const { rows } = await pool.query(updateQuery, [ruletaHora, sorteoId]);
 
+    return res.json({
+      success: true,
+      message: 'Ruleta programada correctamente',
+      sorteo: rows[0],
+    });
+  } catch (err) {
+    console.error('Error en programarRuleta:', err);
+    // Esto ayuda muchísimo a depurar en Vercel logs
+    return res.status(500).json({
+      error: 'Error interno al programar la ruleta',
+      detail: err?.message,
+    });
+  }
+};
 
-    const { rows: updatedRows } = await pool.query(updateQuery, [
-          ruletaHora,
-          sorteoId,
-        ]);
-
-        // (Opcional) Si luego quieres usar audit_log, aquí podríamos insertar un log.
-
-        return res.json({
-          success: true,
-          message: 'Ruleta programada correctamente',
-          sorteo: updatedRows[0],
-        });
-      } catch (err) {
-        console.error('Error en programarRuleta:', err);
-        return res.status(500).json({ error: 'Error interno al programar la ruleta' });
-      }
-    };
 
 /**
  * 🧿 INFO PÚBLICA DE RULETA
