@@ -57,6 +57,10 @@ export const programarRuleta = async (req, res) => {
       ruletaHora.setMinutes(ruletaHora.getMinutes() + min);
     }
 
+    // ⚠️ Ajuste: convertir siempre a ISO UTC antes de guardar
+    const ruletaHoraUTC = ruletaHora.toISOString();
+
+
     // 3) Guardar ruleta (NO toques estado del sorteo aquí: déjalo "lleno")
     const updateQuery = `
       UPDATE sorteo
