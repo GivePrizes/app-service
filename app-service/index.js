@@ -4,7 +4,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import multer from 'multer';
 
-import ruletaRoutes from './api/routes/ruletaRoutes.js';
 import participanteRoutes from './api/routes/participanteRoutes.js';
 import sorteoRoutes from './api/routes/sorteoRoutes.js';
 import adminRoutes from './api/routes/adminRoutes.js';
@@ -31,16 +30,16 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Rutas principales
 app.use('/api/participante', participanteRoutes);
-app.use('/api/sorteos', sorteoRoutes);
 app.use('/api/admin', adminRoutes);
+
+// Agrupamos sorteo + ruleta en el mismo prefijo
+app.use('/api/sorteos', sorteoRoutes);
+
 
 // Ruta raíz para probar que está vivo
 app.get('/', (req, res) => {
   res.send('APP SERVICE OK 🚀');
 });
-
-// Rutas de ruleta
-app.use('/api/sorteos', ruletaRoutes);
 
 
 export const upload = multer({ storage });
