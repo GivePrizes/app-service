@@ -494,29 +494,26 @@ export const realizarRuleta = async (req, res) => {
   }
 };
 
-/**
- * OBTENER NÚMEROS APROBADOS PARA RULETA
- * GET /api/sorteos/:id/ruleta-numeros
- *
- * Devuelve lista de números aprobados para la ruleta.
- * Lo usan los clientes para mostrar la ruleta.
- */
+
+// ✅ NÚMEROS APROBADOS (SIN DATOS PERSONALES)
+// GET /api/sorteos/:id/ruleta-numeros
 export const getRuletaNumeros = async (req, res) => {
   const sorteoId = parseInt(req.params.id, 10);
+
   if (Number.isNaN(sorteoId)) {
     return res.status(400).json({ error: 'ID de sorteo inválido' });
   }
 
   try {
-    const { rows } = await pool.query(
-      `
+    const q = `
       SELECT numero
       FROM numero_participacion
-      WHERE sorteo_id = $1 AND estado = 'aprobado'
-      ORDER BY numero ASC
-      `,
-      [sorteoId]
-    );
+      WHERE sorteo_id = $1
+        AND estado = 'aprobado'
+      ORDER BY numero ASC;
+    `;
+
+    const { rows } = await pool.query(q, [sorteoId]);
 
     return res.json({
       sorteo_id: sorteoId,
@@ -524,7 +521,8 @@ export const getRuletaNumeros = async (req, res) => {
       numeros: rows.map(r => r.numero),
     });
   } catch (err) {
-    console.error('Error getRuletaNumeros:', err);
-    return res.status(500).json({ error: 'Error interno al obtener números' });
+    console.error('Error en getRuletaNumeros:', err);
+    return res.status(500).json({ error: 'Error interno al obtener números de ruleta' });
   }
 };
+
