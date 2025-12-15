@@ -171,3 +171,32 @@ export const misParticipaciones = async (req, res) => {
   }
 };
 
+export const misNumerosPorSorteo = async (req, res) => {
+  const usuario_id = req.user.id;
+  const sorteoId = parseInt(req.query.sorteoId, 10);
+
+  if (Number.isNaN(sorteoId)) {
+    return res.status(400).json({ error: 'sorteoId inválido' });
+  }
+
+  try {
+    const q = `
+      SELECT numero
+      FROM numero_participacion
+      WHERE usuario_id = $1
+        AND sorteo_id = $2
+        AND estado = 'aprobado'
+      ORDER BY numero ASC;
+    `;
+
+    const { rows } = await pool.query(q, [usuario_id, sorteoId]);
+
+    return res.json({
+      sorteoId,
+      numeros: rows.map(r => r.numero),
+    });
+  } catch (err) {
+    console.error('Error en misNumerosPorSorteo:', err);
+    return res.status(500).json({ error: 'Error cargando mis números' });
+  }
+};
