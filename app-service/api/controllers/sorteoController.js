@@ -223,7 +223,7 @@ export const getRuletaData = async (req, res) => {
   }
 };
 
-// ✅ Realizar sorteo solo si está "lleno" (o con todos los aprobados)
+//  Realizar sorteo solo si está "lleno" (o con todos los aprobados)
 export const realizarSorteo = async (req, res) => {
   const { id } = req.params;
 
@@ -321,7 +321,7 @@ export const eliminarSorteo = async (req, res) => {
 
 
 // api/controllers/sorteoController.js
-//  Actualizar sorteo existente 
+//  Actualizar sorteo existente
 //  (sin manejo de imagen en esta función)
 //  (la imagen se maneja solo en crearSorteo con upload a Supabase)
   // //  (aquí solo se actualizan los campos de texto/números/fecha)

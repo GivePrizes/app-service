@@ -2,7 +2,7 @@
 import pool from '../utils/db.js';
 
 /**
- * 🧿 PROGRAMAR RULETA
+ *  PROGRAMAR RULETA
  * POST /api/sorteos/:id/programar-ruleta
  * Body:
  *  - tiempoMinutos (number)  -> opcional
@@ -22,7 +22,14 @@ export const programarRuleta = async (req, res) => {
   try {
     // 1) Verificar sorteo
     const sorteoRes = await pool.query(
-      'SELECT id, estado, ruleta_estado FROM sorteo WHERE id = $1',
+      `SELECT
+         id,
+         estado,
+         ruleta_estado,
+         ruleta_realizada_at,
+         numero_ganador
+       FROM sorteo
+       WHERE id = $1`,
       [sorteoId]
     );
 
@@ -32,10 +39,27 @@ export const programarRuleta = async (req, res) => {
 
     const sorteo = sorteoRes.rows[0];
 
-    // Solo se programa si está LLENO (tu enum real sí tiene "lleno")
+    // ✅ Regla: solo se programa si está LLENO
     if (sorteo.estado !== 'lleno') {
       return res.status(400).json({
         error: `Solo puedes programar la ruleta cuando el sorteo esté LLENO. Estado actual: "${sorteo.estado}".`,
+      });
+    }
+
+    // ✅ Bloqueos anti-reprogramación
+    if (
+      sorteo.ruleta_realizada_at ||
+      sorteo.numero_ganador ||
+      sorteo.ruleta_estado === 'finalizada'
+    ) {
+      return res.status(409).json({
+        error: 'La ruleta ya fue realizada. No se puede reprogramar.',
+      });
+    }
+
+    if (sorteo.ruleta_estado !== 'no_programada') {
+      return res.status(409).json({
+        error: `La ruleta ya está en estado "${sorteo.ruleta_estado}".`,
       });
     }
 
@@ -57,21 +81,29 @@ export const programarRuleta = async (req, res) => {
       ruletaHora.setMinutes(ruletaHora.getMinutes() + min);
     }
 
-    // ⚠️ Ajuste: convertir siempre a ISO UTC antes de guardar
+    // ✅ Guardar siempre en UTC (ISO)
     const ruletaHoraUTC = ruletaHora.toISOString();
 
-
-    // 3) Guardar ruleta (NO toques estado del sorteo aquí: déjalo "lleno")
+    // 3) Guardar ruleta (sin tocar estado del sorteo: se mantiene "lleno")
     const updateQuery = `
       UPDATE sorteo
       SET
         ruleta_estado = 'programada',
         ruleta_hora_programada = $1
       WHERE id = $2
+        AND ruleta_estado = 'no_programada'
+        AND ruleta_realizada_at IS NULL
+        AND numero_ganador IS NULL
       RETURNING id, estado, ruleta_estado, ruleta_hora_programada;
     `;
 
-    const { rows } = await pool.query(updateQuery, [ruletaHora, sorteoId]);
+    const { rows } = await pool.query(updateQuery, [ruletaHoraUTC, sorteoId]);
+
+    if (rows.length === 0) {
+      return res.status(409).json({
+        error: 'No se pudo programar: ya estaba programada o ya fue realizada.',
+      });
+    }
 
     return res.json({
       success: true,
@@ -80,7 +112,6 @@ export const programarRuleta = async (req, res) => {
     });
   } catch (err) {
     console.error('Error en programarRuleta:', err);
-    // Esto ayuda muchísimo a depurar en Vercel logs
     return res.status(500).json({
       error: 'Error interno al programar la ruleta',
       detail: err?.message,
@@ -89,8 +120,9 @@ export const programarRuleta = async (req, res) => {
 };
 
 
+
 /**
- * 🧿 INFO PÚBLICA DE RULETA
+ *  INFO PÚBLICA DE RULETA
  * GET /api/sorteos/:id/ruleta-info
  *
  * Lo usan admin y participantes para:
@@ -178,7 +210,7 @@ export const getRuletaInfo = async (req, res) => {
 };
 
 /**
- * 🧿 LISTA DE PARTICIPANTES PARA LA RULETA
+ *  LISTA DE PARTICIPANTES PARA LA RULETA
  * GET /api/sorteos/:id/ruleta-participantes
  *
  * Admin: ve nombres completos.
@@ -229,7 +261,7 @@ export const getRuletaParticipantes = async (req, res) => {
 };
 
 /**
- * 🧿 REALIZAR RULETA (GIRAR)
+ *  REALIZAR RULETA (GIRAR)
  * POST /api/sorteos/:id/realizar-ruleta
  *
  * - Valida hora programada
@@ -383,6 +415,9 @@ export const realizarRuleta = async (req, res) => {
         ruleta_realizada_at = NOW(),
         top_buyer_user_id   = $2
       WHERE id = $3
+        AND ruleta_realizada_at IS NULL
+        AND numero_ganador IS NULL
+        AND ruleta_estado = 'programada'
       RETURNING *;
     `;
 
@@ -392,6 +427,10 @@ export const realizarRuleta = async (req, res) => {
       sorteoId,
     ]);
 
+    if (updatedSorteoRes.rows.length === 0) {
+      await pool.query('ROLLBACK');
+      return res.status(409).json({ error: 'La ruleta ya fue realizada anteriormente.' });
+    }
     const updatedSorteo = updatedSorteoRes.rows[0];
 
     // 6) Insertar en ruleta_log (histórico)
