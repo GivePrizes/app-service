@@ -376,7 +376,7 @@ export const realizarRuleta = async (req, res) => {
     }
 
     // 4) Seleccionar ganador según modo_sorteo
-    const modo = sorteo.modo_sorteo; // 'ALEATORIO' | 'PONDERADO_POR_NUMEROS' | 'PREMIO_TOP_COMPRADOR'
+    const modo = sorteo.modo_sorteo; // 'ALEATORIO' | 'PONDERADO_POR_NUMEROS' | 'PREMIO_TOP_COMPRADOR' | 'TOP_BUYER'
     let ganador;
 
     if (modo === 'ALEATORIO') {
@@ -393,6 +393,11 @@ export const realizarRuleta = async (req, res) => {
       const userIdGanador = usuarios[randomIndex(usuarios.length)];
       const participacionesDeUsuario = porUsuario.get(userIdGanador);
       ganador = participacionesDeUsuario[randomIndex(participacionesDeUsuario.length)];
+    } else if (modo === 'TOP_BUYER') {
+      // El usuario con más participaciones gana directamente
+      const maxUserId = Array.from(conteoPorUsuario.entries())
+        .sort((a, b) => b[1] - a[1])[0][0];
+      ganador = participaciones.find(p => p.usuario_id === maxUserId);
     } else {
       // PONDERADO_POR_NUMEROS y PREMIO_TOP_COMPRADOR:
       // cada número cuenta como una entrada en el "bombo".
