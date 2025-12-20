@@ -1,4 +1,4 @@
-// api/middleware/requirePermission.js
+// app-service/api/middleware/requirePermission.js
 export const requirePermission = (perm) => (req, res, next) => {
   const permisos = Array.isArray(req.user?.permisos) ? req.user.permisos : [];
 
