@@ -1,7 +1,7 @@
 // api/routes/cuentasAdminRoutes.js
 import { Router } from 'express';
 import { verifyToken, requireAdmin } from '../middleware/jwtValidate.js';
-import { listarCuentasPorSorteos, entregarCuenta } from '../controllers/cuentasController.js';
+import { listarCuentasPorSorteos, entregarCuenta } from '../controllers/cuentaController.js';
 
 const router = Router();
 
