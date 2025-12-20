@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { verifyToken, requireAdmin } from '../middleware/jwtValidate.js';
+import { requirePermission } from '../middleware/requirePermission.js';
 import {
   getComprobantesPendientes,
   aprobarComprobante,
@@ -8,10 +9,26 @@ import {
 
 const router = Router();
 
+// Todos los admin pasan por aquí
 router.use(verifyToken, requireAdmin);
 
-router.get('/comprobantes', getComprobantesPendientes);
-router.post('/comprobantes/aprobar/:id', aprobarComprobante);
-router.post('/comprobantes/rechazar/:id', rechazarComprobante);
+// 👇 SOLO admins con permiso de pagos
+router.get(
+  '/comprobantes',
+  requirePermission('pagos:aprobar'),
+  getComprobantesPendientes
+);
+
+router.post(
+  '/comprobantes/aprobar/:id',
+  requirePermission('pagos:aprobar'),
+  aprobarComprobante
+);
+
+router.post(
+  '/comprobantes/rechazar/:id',
+  requirePermission('pagos:aprobar'),
+  rechazarComprobante
+);
 
 export default router;
