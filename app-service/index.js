@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import multer from 'multer';
-
+import cuentaAdminRoutes from './api/routes/cuentasAdminRoutes.js';
 import participanteRoutes from './api/routes/participanteRoutes.js';
 import sorteoRoutes from './api/routes/sorteoRoutes.js';
 import adminRoutes from './api/routes/adminRoutes.js';
@@ -34,6 +34,9 @@ app.use('/api/admin', adminRoutes);
 
 // Agrupamos sorteo + ruleta en el mismo prefijo
 app.use('/api/sorteos', sorteoRoutes);
+
+// Rutas de administración de cuentas por sorteo
+app.use('/api/admin/cuentas', cuentasAdminRoutes);
 
 
 // Ruta raíz para probar que está vivo
