@@ -1,6 +1,5 @@
 // index.js (APP-SERVICE)
 import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import multer from 'multer';
 
@@ -14,19 +13,29 @@ dotenv.config();
 const app = express();
 const storage = multer.memoryStorage();
 
-//  CORS correcto + preflight
-const corsConfig = {
-  origin: [
-    'http://localhost:5173',
-    'https://siempre-ganas.vercel.app',
-  ],
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-};
+// ✅ CORS a prueba de preflight (Vercel-friendly)
+const allowedOrigins = new Set([
+  'http://localhost:5173',
+  'https://siempre-ganas.vercel.app',
+]);
 
-app.use(cors(corsConfig));
-app.options('*', cors(corsConfig));
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (origin && allowedOrigins.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  }
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
+  next();
+});
 
 // Body limits
 app.use(express.json({ limit: '10mb' }));
@@ -37,7 +46,7 @@ app.use('/api/participante', participanteRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/sorteos', sorteoRoutes);
 
-//  Rutas de administración de cuentas por sorteo
+// Rutas de administración de cuentas por sorteo
 app.use('/api/admin/cuentas', cuentaAdminRoutes);
 
 // Root healthcheck
@@ -47,5 +56,3 @@ app.get('/', (req, res) => {
 
 export const upload = multer({ storage });
 export default app;
-
-
