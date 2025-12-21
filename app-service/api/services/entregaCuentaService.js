@@ -2,7 +2,6 @@
 import pool from '../utils/db.js';
 
 export async function getCuentasPorSorteos() {
-  // Trae: sorteos + participantes aprobados + estado entrega + numeros agregados
   const result = await pool.query(`
     SELECT
       s.id AS sorteo_id,
@@ -18,12 +17,21 @@ export async function getCuentasPorSorteos() {
       ec.estado AS entrega_estado,
       ec.entregada_at,
 
-      ARRAY_AGG(np.numero ORDER BY np.numero) AS numeros
+      COALESCE(
+        ARRAY_AGG(DISTINCT np.numero ORDER BY np.numero)
+          FILTER (WHERE np.numero IS NOT NULL),
+        '{}'::int[]
+      ) AS numeros
 
     FROM entrega_cuenta ec
-    JOIN sorteo s ON s.id = ec.sorteo_id
-    JOIN usuarios u ON u.id = ec.usuario_id
-    JOIN numero_participacion np
+    JOIN sorteo s
+      ON s.id = ec.sorteo_id
+    JOIN usuarios u
+      ON u.id = ec.usuario_id
+
+    -- IMPORTANTE: si por alguna razón existe entrega_cuenta pero todavía no hay aprobados,
+    -- igual te lo muestra (numeros = [])
+    LEFT JOIN numero_participacion np
       ON np.sorteo_id = ec.sorteo_id
      AND np.usuario_id = ec.usuario_id
      AND np.estado = 'aprobado'
@@ -36,7 +44,6 @@ export async function getCuentasPorSorteos() {
     ORDER BY s.id DESC, u.nombre ASC;
   `);
 
-  // Transformar a estructura por sorteo (para acordeón)
   const map = new Map();
 
   for (const row of result.rows) {
@@ -57,7 +64,7 @@ export async function getCuentasPorSorteos() {
     if (entregaEstado === 'pendiente') sorteo.resumen.pendientes += 1;
     if (entregaEstado === 'entregada') sorteo.resumen.entregadas += 1;
 
-    // prefijo 57 (lo refinaremos en frontend, pero aquí lo dejamos listo)
+    // Normalización teléfono (solo dígitos) + prefijo 57 si hace falta
     const telRaw = (row.usuario_telefono || '').toString().replace(/\D/g, '');
     const telefonoE164 = telRaw
       ? (telRaw.startsWith('57') ? telRaw : `57${telRaw}`)
@@ -65,11 +72,11 @@ export async function getCuentasPorSorteos() {
 
     sorteo.participantes.push({
       usuarioId: row.usuario_id,
-      nombre: row.usuario_nombre,
-      email: row.usuario_email,
-      telefono: row.usuario_telefono,
+      nombre: row.usuario_nombre || '',
+      email: row.usuario_email || '',
+      telefono: row.usuario_telefono || '',
       telefonoE164,
-      numeros: row.numeros || [],
+      numeros: Array.isArray(row.numeros) ? row.numeros : [],
       entregaEstado,
       entregadaAt: row.entregada_at
     });
