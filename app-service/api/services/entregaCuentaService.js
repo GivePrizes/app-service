@@ -6,6 +6,7 @@ export async function getCuentasPorSorteos() {
     SELECT
       s.id AS sorteo_id,
       s.descripcion AS sorteo_descripcion,
+      s.premio AS sorteo_premio,
       s.estado AS sorteo_estado,
       s.cantidad_numeros,
 
@@ -24,26 +25,24 @@ export async function getCuentasPorSorteos() {
       ) AS numeros
 
     FROM entrega_cuenta ec
-    JOIN sorteo s
-      ON s.id = ec.sorteo_id
-    JOIN usuarios u
-      ON u.id = ec.usuario_id
+    JOIN sorteo s ON s.id = ec.sorteo_id
+    JOIN usuarios u ON u.id = ec.usuario_id
 
-    -- IMPORTANTE: si por alguna razón existe entrega_cuenta pero todavía no hay aprobados,
-    -- igual te lo muestra (numeros = [])
+    -- ✅ si todavía no hay aprobados, igual lo muestra
     LEFT JOIN numero_participacion np
       ON np.sorteo_id = ec.sorteo_id
      AND np.usuario_id = ec.usuario_id
      AND np.estado = 'aprobado'
 
     GROUP BY
-      s.id, s.descripcion, s.estado, s.cantidad_numeros,
+      s.id, s.descripcion, s.premio, s.estado, s.cantidad_numeros,
       u.id, u.nombre, u.email, u.telefono,
       ec.estado, ec.entregada_at
 
     ORDER BY s.id DESC, u.nombre ASC;
   `);
 
+  // ✅ Estructura por sorteo (acordeón)
   const map = new Map();
 
   for (const row of result.rows) {
@@ -51,6 +50,7 @@ export async function getCuentasPorSorteos() {
       map.set(row.sorteo_id, {
         sorteoId: row.sorteo_id,
         descripcion: row.sorteo_descripcion,
+        premio: row.sorteo_premio,
         estado: row.sorteo_estado,
         cantidadNumeros: row.cantidad_numeros,
         resumen: { pendientes: 0, entregadas: 0 },
@@ -64,11 +64,8 @@ export async function getCuentasPorSorteos() {
     if (entregaEstado === 'pendiente') sorteo.resumen.pendientes += 1;
     if (entregaEstado === 'entregada') sorteo.resumen.entregadas += 1;
 
-    // Normalización teléfono (solo dígitos) + prefijo 57 si hace falta
     const telRaw = (row.usuario_telefono || '').toString().replace(/\D/g, '');
-    const telefonoE164 = telRaw
-      ? (telRaw.startsWith('57') ? telRaw : `57${telRaw}`)
-      : '';
+    const telefonoE164 = telRaw ? (telRaw.startsWith('57') ? telRaw : `57${telRaw}`) : '';
 
     sorteo.participantes.push({
       usuarioId: row.usuario_id,

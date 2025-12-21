@@ -1,22 +1,20 @@
-// api/routes/cuentasAdminRoutes.js
+// api/routes/cuentaAdminRoutes.js
 import { Router } from 'express';
-import { verifyToken, requireAdmin } from '../middleware/jwtValidate.js';
-import { listarCuentasPorSorteos, entregarCuenta } from '../controllers/cuentaController.js';
-import { requirePermission } from '../middleware/requirePermission.js';
+import { verifyToken } from '../middleware/jwtValidate.js';
+import { listarCuentasPorSorteos, entregarCuenta } from '../controllers/cuentasController.js';
 
+// ✅ Si quieres restringir SOLO a "cuentas", aquí cambias requireAdmin por requireCuentas
+import { requireAdmin } from '../middleware/jwtValidate.js';
 
 const router = Router();
 
-// Por ahora solo admin. En el Paso 3 añadimos requirePermission('cuentas:gestionar')
+// /api/admin/cuentas/...
 router.use(verifyToken, requireAdmin);
 
-// Añadimos middleware de permisos
-router.use(requirePermission('cuentas:gestionar'));
-
-// GET acordeón
+// GET /api/admin/cuentas/sorteos
 router.get('/sorteos', listarCuentasPorSorteos);
 
-// PATCH marcar entregada
+// PATCH /api/admin/cuentas/sorteos/:sorteoId/usuarios/:usuarioId/entregar
 router.patch('/sorteos/:sorteoId/usuarios/:usuarioId/entregar', entregarCuenta);
 
 export default router;
