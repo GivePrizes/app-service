@@ -1,7 +1,7 @@
 // api/routes/cuentaAdminRoutes.js
 import { Router } from 'express';
 import { verifyToken } from '../middleware/jwtValidate.js';
-import { listarCuentasPorSorteos, entregarCuenta } from '../controllers/cuentasController.js';
+import { listarCuentasPorSorteos, entregarCuenta } from '../controllers/cuentaController.js';
 
 // ✅ Si quieres restringir SOLO a "cuentas", aquí cambias requireAdmin por requireCuentas
 import { requireAdmin } from '../middleware/jwtValidate.js';
